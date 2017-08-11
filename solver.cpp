@@ -33,7 +33,7 @@ using namespace Eigen;
 VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*res_factor)), ws_background(3*640*480/(2*res_factor*res_factor))  
 {
     //Resolutions and levels
-	rows = 240;
+    rows = 240;
     cols = 320;
 	fovh = M_PI*62.5/180.0;
     fovv = M_PI*48.5/180.0;
@@ -180,6 +180,52 @@ void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)
 	createImagePyramid();
 }
 
+void VO_SF::setImagePair(const std::vector<cv::Mat> rgb, const std::vector<cv::Mat> depth, unsigned int res_factor)
+{
+    assert(rgb.size() == 2);
+    assert(depth.size() == 2);
+    const float norm_factor = 1.f/255.f;
+    //char aux[30];
+
+    //                              First frame
+    //==============================================================================
+
+    cv::Mat intensity ( rgb[0].rows, rgb[0].cols, CV_8UC1 );// = cv::imread(name.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+    cv::cvtColor ( rgb[0], intensity, CV_BGR2GRAY );
+    for (unsigned int v=0; v<height; v++)
+        for (unsigned int u=0; u<width; u++)
+            intensity_wf(height-1-v,u) = norm_factor*intensity.at<unsigned char>(res_factor*v+1,res_factor*u);
+
+    //cv::Mat depth = cv::imread(name, -1);
+    cv::Mat depth_float;
+    depth[0].convertTo(depth_float, CV_32FC1, 1.0 / 5000.0);
+
+    for (unsigned int v=0; v<height; v++)
+        for (unsigned int u=0; u<width; u++)
+            depth_wf(height-1-v,u) = depth_float.at<float>(res_factor*v+1,res_factor*u);
+
+    createImagePyramid();
+
+
+
+    //                              Second frame
+    //==============================================================================
+
+    //intensity = cv::imread(name.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+    cv::cvtColor ( rgb[1], intensity, CV_BGR2GRAY );
+    for (unsigned int v=0; v<height; v++)
+        for (unsigned int u=0; u<width; u++)
+            intensity_wf(height-1-v,u) = norm_factor*intensity.at<unsigned char>(res_factor*v+1,res_factor*u);
+
+    //depth = cv::imread(name, -1);
+    depth[1].convertTo(depth_float, CV_32FC1, 1.0 / 5000.0);
+    for (unsigned int v=0; v<height; v++)
+        for (unsigned int u=0; u<width; u++)
+            depth_wf(height-1-v,u) = depth_float.at<float>(res_factor*v+1,res_factor*u);
+
+    createImagePyramid();
+}
+
 bool VO_SF::loadImageFromSequence(string files_dir, unsigned int index, unsigned int res_factor)
 {
     const float norm_factor = 1.f/255.f;
@@ -245,6 +291,7 @@ void VO_SF::saveFlowAndSegmToFile(string files_dir)
             rmx.at<float>(v,u) = motionfield[1](rows-1-v,u);
             rmy.at<float>(v,u) = motionfield[2](rows-1-v,u);
             rmz.at<float>(v,u) = motionfield[0](rows-1-v,u);
+            //std::cout << motionfield[1](rows-1-v,u) << " " << motionfield[2](rows-1-v,u) << " " << motionfield[1](rows-1-v,u) << std::endl;
 			segm_col.at<cv::Vec3b>(v,u) = cv::Vec3b(255.f*backg_image[2](rows-1-v,u), 255.f*backg_image[1](rows-1-v,u), 255.f*backg_image[0](rows-1-v,u));
 			kmeans.at<cv::Vec3b>(v,u) = cv::Vec3b(255.f* labels_image[2](rows-1-v,u), 255.f*labels_image[1](rows-1-v,u), 255.f*labels_image[0](rows-1-v,u));
         }
@@ -758,7 +805,7 @@ void VO_SF::computeTransformationFromTwist(Vector6f &twist, bool is_odometry, un
 
 		Matrix4f log_trans = T_odometry.log();
 		twist_odometry(0) = log_trans(0,3); twist_odometry(1) = log_trans(1,3); twist_odometry(2) = log_trans(2,3);
-		twist_odometry(3) = -log_trans(1,2); twist_odometry(4) = log_trans(0,2); twist_odometry(5) = -log_trans(0,1);	
+        twist_odometry(3) = -log_trans(1,2); twist_odometry(4) = log_trans(0,2); twist_odometry(5) = -log_trans(0,1);
 	}
 
 	//If moving cluster, just update its transformation (velocity not used)
@@ -1086,11 +1133,127 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
     //Compute the scene flow from the rigid motions and the labels
 	computeSceneFlowFromRigidMotions();
 
-	//Show runtime
-	const float runtime = 1000.f*clock.Tac();
-	printf("\n Runtime = %f (ms) ", runtime);
-	if (create_image_pyr)	printf("including the image pyramid");
-	else					printf("without including the image pyramid");
+    //Show runtime
+    const float runtime = 1000.f*clock.Tac();
+    printf("\nRuntime = %f (ms) ", runtime);
+    if (create_image_pyr)	printf("including the image pyramid\n");
+    else					printf("without including the image pyramid\n");
+}
+
+void VO_SF::run_VO_SF_TP ( bool create_image_pyr )
+{
+    //Create the image pyramid if it has not been computed yet
+    //----------------------------------------------------------------------------------
+    if (create_image_pyr)
+        createImagePyramid();
+
+    //Create labels
+    //----------------------------------------------------------------------------------
+    //Kmeans
+    kMeans3DCoord();
+
+    //Create the pyramid for the labels
+    createLabelsPyramidUsingKMeans();
+
+    //Compute warped b_segmentation (necessary for the robust estimation)
+    computeSegTemporalRegValues();
+
+
+    //Solve a robust odometry problem to segment the background (coarse-to-fine)
+    //---------------------------------------------------------------------------------
+    //Initialize the overall transformations to 0
+    T_odometry.setIdentity();
+    for (unsigned int l=0; l<NUM_LABELS; l++)
+        T_clusters[l].setIdentity();
+
+    //Coarse-to-fine
+    for (unsigned int i=0; i<ctf_levels; i++)
+        for (unsigned int k=0; k<max_iter_per_level; k++)
+        {
+            level = i;
+            unsigned int s = pow(2.f,int(ctf_levels-(i+1)));
+            cols_i = cols/s; rows_i = rows/s;
+            image_level = ctf_levels - i + round(log2(width/cols)) - 1;
+
+            //1. Perform warping
+            if (i == 0)
+            {
+                depth_warped[image_level] = depth[image_level];
+                intensity_warped[image_level] = intensity[image_level];
+                xx_warped[image_level] = xx[image_level];
+                yy_warped[image_level] = yy[image_level];
+            }
+            else
+                warpImagesAccurate(); // forward warping, more precise
+
+            //2. Compute inter coords (better linearization of the range and optical flow constraints)
+            computeCoordsParallel();
+
+            //3. Compute derivatives
+            calculateDerivatives();
+
+            //4. Solve odometry
+            solveRobustOdometryCauchy();
+
+            //Check convergence of nonlinear iterations
+            if (twist_level_odometry.norm() < 0.04f)
+                break;
+        }
+
+    //Segment static and dynamic parts
+    segmentStaticDynamic();
+
+
+    //Solve the multi-odometry problem (coarse-to-fine)
+    //-------------------------------------------------------------------------------------
+    //Set the overall transformations to 0
+    T_odometry.setIdentity();
+    for (unsigned int l=0; l<NUM_LABELS; l++)
+        T_clusters[l].setIdentity();
+
+    //Coarse-to-fine
+    for (unsigned int i=0; i<ctf_levels; i++)
+    {
+        level = i;
+        unsigned int s = pow(2.f,int(ctf_levels-(i+1)));
+        cols_i = cols/s; rows_i = rows/s;
+        image_level = ctf_levels - i + round(log2(width/cols)) - 1;
+
+        //1. Perform warping
+        //Info: The accuracy of the odometry is slightly better using the other warping but I cannot use it here because
+        // the labels are defined in the old image (better about 7% for the only sequence I have tested)
+        if (i == 0)
+        {
+            depth_warped[image_level] = depth[image_level];
+            intensity_warped[image_level] = intensity[image_level];
+            xx_warped[image_level] = xx[image_level];
+            yy_warped[image_level] = yy[image_level];
+        }
+        else
+            warpImagesParallel();
+
+        //2. Compute inter coords
+        computeCoordsParallel();
+
+        //3. Compute derivatives
+        calculateDerivatives();
+
+        //4. Compute weights
+        computeWeights();
+
+        //5. Solve odometry
+        solveMotionAllClusters();
+    }
+
+    //Update camera pose from the "static" motion estimate
+    updateCameraPoseFromOdometry();
+
+    //Refine static/dynamic segmentation and warp it to use it in the next iteration
+    segmentStaticDynamic();
+    warpStaticDynamicSegmentation();
+
+    //Compute the scene flow from the rigid motions and the labels
+    computeSceneFlowFromRigidMotions();
 }
 
 void VO_SF::computeSceneFlowFromRigidMotions()

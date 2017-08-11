@@ -36,7 +36,7 @@
 // Set the flag "save_results" to true if you want to save the estimated trajectory
 // -------------------------------------------------------------------------------
 
-int main()
+int main(int argc, char **argv)
 {	
 	const bool save_results = true;
     unsigned int res_factor = 2;
@@ -45,7 +45,9 @@ int main()
 
 
 	//Set dir of the Rawlog file
-	dataset.filename = ".../rawlog_rgbd_dataset_freiburg1_desk/rgbd_dataset_freiburg1_desk.rawlog";
+    dataset.filename = "../rawlog_rgbd_dataset_freiburg1_desk/rgbd_dataset_freiburg1_desk.rawlog";
+    if ( argc > 1 )
+      dataset.filename = argv[1];
 
 	//Create the 3D Scene
 	cf.initializeSceneDatasets();

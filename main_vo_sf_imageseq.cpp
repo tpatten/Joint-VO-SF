@@ -33,7 +33,7 @@
 // 'e' - Finish/exit
 // -------------------------------------------------------------------------------
 
-int main()
+int main(int argc, char **argv)
 {	
     const unsigned int res_factor = 2;
 	VO_SF cf(res_factor);
@@ -42,7 +42,9 @@ int main()
 	//Set first image to load, decimation factor and the sequence dir
 	unsigned int im_count = 1;
 	const unsigned int decimation = 1; //5
-	std::string dir = ".../data/sequence people moving/"; 
+    std::string dir = "/home/tpatten/Code/Joint-VO-SF/data/opening_door/";
+    if ( argc > 1 )
+      dir = argv[1];
 
 	//Load image and create pyramid
 	cf.loadImageFromSequence(dir, im_count, res_factor);
@@ -93,6 +95,7 @@ int main()
 			cf.updateSceneImageSeq();
 		}
 	}
+    std::cin.ignore();
 
 	return 0;
 }

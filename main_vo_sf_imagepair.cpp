@@ -32,14 +32,24 @@
 // flow and the static/dynamic segmentation 
 // -------------------------------------------------------------------------------
 
-int main()
+int main(int argc, char **argv)
 {	
-	const bool save_results = false;
+    bool save_results = false;
 	const unsigned int res_factor = 2;
 	VO_SF cf(res_factor);
 
 	//Set image dir
-	std::string dir = ".../data/opening door/";
+    std::string dir = "/home/tpatten/Code/Joint-VO-SF/data/opening_door/";
+    if ( argc > 1 )
+      dir = argv[1];
+
+    if ( argc > 2 )
+    {
+      std::string flag = argv[2];
+      std::cout << flag << std::endl;
+      if ( flag == "-s" )
+        save_results = true;
+    }
 
 	//Load images and create both pyramids
 	cf.loadImagePairFromFiles(dir, res_factor);

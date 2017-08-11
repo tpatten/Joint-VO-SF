@@ -36,6 +36,7 @@
 
 
 #define NUM_LABELS 24
+//#define NUM_LABELS 128
 
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 typedef Eigen::Matrix<float, 2, 6> JacobianT;
@@ -116,6 +117,8 @@ public:
 
     void run_VO_SF(bool create_image_pyr);		//Main method to run whole algorithm
 
+    void run_VO_SF_TP ( bool create_image_pyr );		//Main method to run whole algorithm (Tim Patten version)
+
 
 
 	//							Solver
@@ -185,6 +188,7 @@ public:
     //					Input / Output
 	//--------------------------------------------------------------
 	void loadImagePairFromFiles(std::string files_dir, unsigned int res_factor);
+    void setImagePair(const std::vector<cv::Mat> rgb, const std::vector<cv::Mat> depth, unsigned int res_factor);
 	bool loadImageFromSequence(std::string files_dir, unsigned int index, unsigned int res_factor);
 	void saveFlowAndSegmToFile(std::string files_dir);	
 
