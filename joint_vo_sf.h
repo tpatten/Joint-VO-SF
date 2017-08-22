@@ -85,7 +85,7 @@ public:
 	Eigen::Array44f f_mask;											//Convolutional kernel used to build the image pyramid
 
     //Velocities, transformations and poses
-	Eigen::Matrix4f T_clusters[NUM_LABELS];					//Rigid transformations estimated for each cluster
+    Eigen::Matrix4f T_clusters[NUM_LABELS];					//Rigid transformations estimated for each cluster
 	Eigen::Matrix4f T_odometry;								//Rigid transformation of the camera motion (odometry)
 	Vector6f twist_odometry, twist_level_odometry;			//Twist encoding the odometry (accumulated and local for the pyramid level)	
 	mrpt::poses::CPose3D cam_pose, cam_oldpose;				//Estimated camera poses (current and prev)

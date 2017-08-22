@@ -64,9 +64,8 @@ TARGET_LINK_LIBRARIES(VO-SF-ImagePair	vo_sf_lib)
 #To test it with pre-recorded RGB-D sequences		
 ADD_EXECUTABLE(VO-SF-ImageSeq 	main_vo_sf_imageseq.cpp)
 TARGET_LINK_LIBRARIES(VO-SF-ImageSeq 	vo_sf_lib)
+
 			
-
-
 
 # Set optimized building:
 IF(CMAKE_COMPILER_IS_GNUCXX)
