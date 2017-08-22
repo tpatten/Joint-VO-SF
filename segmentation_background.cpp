@@ -90,7 +90,7 @@ void VO_SF::segmentStaticDynamic()
 				}		
 			}
 
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 	{	
 		if (size_kmeans[l] != 0)
 		{
@@ -114,7 +114,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 {
 	//Set thresholds according to the residuals obtained and the estimated velocity
 	vector<float> res_sorted;
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 		if (size_kmeans[l] != 0)
 			res_sorted.push_back(r(l));
 	std::sort(res_sorted.begin(), res_sorted.end());
@@ -126,8 +126,8 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 
 	//Find the number of connections between clusters (for the reg term)
 	unsigned int num_connections = 0;
-	for (unsigned int l=0; l<NUM_LABELS; l++)
-		for (unsigned int lc=l+1; lc<NUM_LABELS; lc++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
+        for (unsigned int lc=l+1; lc<num_cluster_labels; lc++)
 			if (connectivity[l][lc])
 				num_connections++;
 
@@ -139,7 +139,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 
 	//Find the depth range of the image (approx)
 	float min_depth = 10.f, max_depth = 0.f;
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 		if (size_kmeans[l] != 0)
 		{
 			min_depth = min(min_depth, kmeans(0,l));
@@ -157,7 +157,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 	//Fill A and B
 	//----------------------------------------------------------------
 	//Data term + "depth" term + temporal regularization
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 	{
 		const float transition_error = 0.5f*(lim_nobackg + lim_backg);
 		background_ref(l) = max(0.f, min(2.f, (r[l] - lim_nobackg)/(lim_backg-lim_nobackg)));
@@ -170,13 +170,13 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 
 	//Spatial regularization
 	unsigned int cont_reg = 0;
-	for (unsigned int l=0; l<NUM_LABELS; l++)
-		for (unsigned int lc=l+1; lc<NUM_LABELS; lc++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
+        for (unsigned int lc=l+1; lc<num_cluster_labels; lc++)
 			if (connectivity[l][lc] == true)
 			{
 				const float weight_reg = lambda_reg;
-				A(NUM_LABELS + cont_reg, l) = weight_reg;
-				A(NUM_LABELS + cont_reg, lc) = -weight_reg;
+                A(num_cluster_labels + cont_reg, l) = weight_reg;
+                A(num_cluster_labels + cont_reg, lc) = -weight_reg;
 				cont_reg++;		
 			}
 
@@ -188,7 +188,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 	b_segm = AtA.ldlt().solve(AtB);	
 
 	//Classify clusters as static, uncertain or moving
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 	{
 		if (b_segm[l] > 0.667f) 
 		{
@@ -219,7 +219,7 @@ void VO_SF::warpStaticDynamicSegmentation()
 
 	//Warped Kmeans
 	Matrix<float, 3, NUM_LABELS> kmeans_w;
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 	{
         const Matrix4f trans = T_clusters[l].inverse();
 		const Vector4f kmeans_homog(kmeans(0,l), kmeans(1,l), kmeans(2,l), 1.f);
@@ -228,8 +228,8 @@ void VO_SF::warpStaticDynamicSegmentation()
 
 	//Compute distance between the kmeans (to improve runtime of the next phase)
 	Matrix<float, NUM_LABELS, NUM_LABELS> kmeans_dist;
-	for (unsigned int la=0; la<NUM_LABELS; la++)
-		for (unsigned int lb=la+1; lb<NUM_LABELS; lb++)
+    for (unsigned int la=0; la<num_cluster_labels; la++)
+        for (unsigned int lb=la+1; lb<num_cluster_labels; lb++)
 			kmeans_dist(la,lb) = (kmeans_w.col(la) - kmeans_w.col(lb)).squaredNorm();
 
 	//Compute KMeans belongings
@@ -242,7 +242,7 @@ void VO_SF::warpStaticDynamicSegmentation()
 				float min_dist = (kmeans_w.col(0) - p).squaredNorm();
 				float dist_here;
 
-				for (unsigned int l=1; l<NUM_LABELS; l++)
+                for (unsigned int l=1; l<num_cluster_labels; l++)
 				{
 					if (kmeans_dist(label,l) > 4.f*min_dist) continue;
 					else if ((dist_here = (kmeans_w.col(l) - p).squaredNorm()) < min_dist)
@@ -275,7 +275,7 @@ void VO_SF::computeSegTemporalRegValues()
 				b_segm_warped[labels_ref(v,u)] += b_segm_image_warped(v,u);
 	
 	
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 		if (size_kmeans[l] != 0)
 			b_segm_warped[l] /= size_kmeans[l];
 }

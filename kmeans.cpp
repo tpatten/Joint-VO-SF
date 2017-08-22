@@ -49,17 +49,17 @@ void VO_SF::initializeKMeans()
 	const MatrixXf &xx_ref = xx_old[image_level];
 	const MatrixXf &yy_ref = yy_old[image_level];
 	MatrixXi &labels_ref = labels[image_level];
-	labels_ref.assign(NUM_LABELS);
+    labels_ref.assign(num_cluster_labels);
 
 
 	//Initialize from scratch at every iteration
 	//-------------------------------------------------------------
 	//Create seeds for the k-means by dividing the image domain
-	unsigned int u_label[NUM_LABELS], v_label[NUM_LABELS];
-	const unsigned int vert_div = ceil(sqrt(NUM_LABELS));
-	const float u_div = float(cols_i)/float(NUM_LABELS+1);
+    unsigned int u_label[num_cluster_labels], v_label[num_cluster_labels];
+    const unsigned int vert_div = ceil(sqrt(num_cluster_labels));
+    const float u_div = float(cols_i)/float(num_cluster_labels+1);
 	const float v_div = float(rows_i)/float(vert_div+1); 
-	for (unsigned int i=0; i<NUM_LABELS; i++)
+    for (unsigned int i=0; i<num_cluster_labels; i++)
 	{
 		u_label[i] = round((i + 1)*u_div);
 		v_label[i] = round((i%vert_div + 1)*v_div);
@@ -71,8 +71,8 @@ void VO_SF::initializeKMeans()
 			if (depth_ref(v,u) != 0.f)
 			{
 				unsigned int min_dist = 1000000.f, quad_dist;
-				unsigned int ini_label = NUM_LABELS;
-				for (unsigned int l=0; l<NUM_LABELS; l++)
+                unsigned int ini_label = num_cluster_labels;
+                for (unsigned int l=0; l<num_cluster_labels; l++)
 					if ((quad_dist = square(v - v_label[l]) + square(u - u_label[l])) < min_dist)
 					{
 						ini_label = l;
@@ -83,7 +83,7 @@ void VO_SF::initializeKMeans()
 			}
 
 	//Compute the "center of mass" for each region
-	std::vector<float> depth_sorted[NUM_LABELS];
+    std::vector<float> depth_sorted[num_cluster_labels];
 
 	for (unsigned int u=0; u<cols_i; u++)
 		for (unsigned int v=0; v<rows_i; v++)
@@ -95,7 +95,7 @@ void VO_SF::initializeKMeans()
 	const float inv_f_i = 2.f*tan(0.5f*fovh)/float(cols_i);
     const float disp_u_i = 0.5f*(cols_i-1);
     const float disp_v_i = 0.5f*(rows_i-1);
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 	{
 		const unsigned int size_label = depth_sorted[l].size();
 		const unsigned int med_pos = size_label/2;
@@ -135,14 +135,14 @@ void VO_SF::kMeans3DCoord()
 
     //                                      Iterate 
     //=======================================================================================
-    vector<vector<IndexAndDistance> > cluster_distances(NUM_LABELS, vector<IndexAndDistance>(NUM_LABELS));
+    vector<vector<IndexAndDistance> > cluster_distances(num_cluster_labels, vector<IndexAndDistance>(num_cluster_labels));
 
-    MatrixXf centers_a(3,NUM_LABELS), centers_b(3,NUM_LABELS);
-	int count[NUM_LABELS];
+    MatrixXf centers_a(3,num_cluster_labels), centers_b(3,num_cluster_labels);
+    int count[num_cluster_labels];
 
 	//Fill centers_a (I need to do it in this way to get maximum speed, I don't know why...)
 	//centers_a.swap(kmeans);
-	for (unsigned int c=0; c<NUM_LABELS; c++)
+    for (unsigned int c=0; c<num_cluster_labels; c++)
 		for (unsigned int r=0; r<3; r++)
 			centers_a(r,c) = kmeans(r,c);
 
@@ -151,11 +151,11 @@ void VO_SF::kMeans3DCoord()
         centers_b.setZero();
 
 		//Compute and sort distances between the kmeans
-        for (unsigned int l=0; l<NUM_LABELS; l++)
+        for (unsigned int l=0; l<num_cluster_labels; l++)
         {
             count[l] = 0;
 			vector<IndexAndDistance> &distances = cluster_distances.at(l);
-            for (unsigned int li=0; li<NUM_LABELS; li++)
+            for (unsigned int li=0; li<num_cluster_labels; li++)
             {
                 IndexAndDistance &idx_and_distance = distances.at(li);
                 idx_and_distance.idx = li;
@@ -198,7 +198,7 @@ void VO_SF::kMeans3DCoord()
                     count[best_label] += 1;
                 }
 
-        for (unsigned int l=0; l<NUM_LABELS; l++)
+        for (unsigned int l=0; l<num_cluster_labels; l++)
             if (count[l] > 0)
 				centers_b.col(l) /= count[l];
 
@@ -211,7 +211,7 @@ void VO_SF::kMeans3DCoord()
 
 	//Copy solution
 	//kmeans.swap(centers_a);
-	for (unsigned int c=0; c<NUM_LABELS; c++)
+    for (unsigned int c=0; c<num_cluster_labels; c++)
 		for (unsigned int r=0; r<3; r++)
 			kmeans(r,c) = centers_a(r,c);
 
@@ -225,8 +225,8 @@ void VO_SF::kMeans3DCoord()
 	MatrixXi &labels_ref = labels[max_level];
 
 	//Initialize labels
-	labels_ref.assign(NUM_LABELS);
-	for(int i = 0; i < NUM_LABELS; ++i)
+    labels_ref.assign(num_cluster_labels);
+    for(int i = 0; i < num_cluster_labels; ++i)
 		count[i] = 0;
 
 
@@ -236,7 +236,7 @@ void VO_SF::kMeans3DCoord()
             if (depth_highres(v,u) != 0.f)
             {
                 const int label_lowres_here = labels_lowres(v/2,u/2);
-				const int last_label = (label_lowres_here == NUM_LABELS) ? 0 : label_lowres_here; //If it was invalid in the low res level initialize it randomly (at 0)
+                const int last_label = (label_lowres_here == num_cluster_labels) ? 0 : label_lowres_here; //If it was invalid in the low res level initialize it randomly (at 0)
 
                 int best_label = last_label;
                 vector<IndexAndDistance> &distances = cluster_distances.at(last_label);
@@ -270,7 +270,7 @@ void VO_SF::kMeans3DCoord()
     smoothRegions(max_level);
 
 	//Save the size of each segment (at max resolution)
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 		size_kmeans[l] = count[l];
 }
 
@@ -285,8 +285,8 @@ void VO_SF::computeRegionConnectivity()
 	const MatrixXf &xx_old_ref = xx_old[max_level];
 	const MatrixXf &yy_old_ref = yy_old[max_level];
 
-    for (unsigned int i=0; i<NUM_LABELS; i++)
-        for (unsigned int j=0; j<NUM_LABELS; j++)
+    for (unsigned int i=0; i<num_cluster_labels; i++)
+        for (unsigned int j=0; j<num_cluster_labels; j++)
 		{
 			if (i == j) connectivity[i][j] = true;
 			else		connectivity[i][j] = false;
@@ -297,7 +297,7 @@ void VO_SF::computeRegionConnectivity()
 			if (depth_old_ref(v,u) != 0.f)
             {
                 //Detect change in the labelling (v+1,u)
-                if ((labels_ref(v,u) != labels_ref(v+1,u))&&(labels_ref(v+1,u) != NUM_LABELS))
+                if ((labels_ref(v,u) != labels_ref(v+1,u))&&(labels_ref(v+1,u) != num_cluster_labels))
                 {
                     const float disty = square(depth_old_ref(v,u) - depth_old_ref(v+1,u)) + square(yy_old_ref(v,u) - yy_old_ref(v+1,u));
                     if (disty < dist2_threshold)
@@ -308,7 +308,7 @@ void VO_SF::computeRegionConnectivity()
                 }
 
                 //Detect change in the labelling (v,u+1)
-                if ((labels_ref(v,u) != labels_ref(v,u+1))&&(labels_ref(v,u+1) != NUM_LABELS))
+                if ((labels_ref(v,u) != labels_ref(v,u+1))&&(labels_ref(v,u+1) != num_cluster_labels))
                 {
                     const float distx = square(depth_old_ref(v,u) - depth_old_ref(v,u+1)) + square(xx_old_ref(v,u) - xx_old_ref(v,u+1));
                     if (distx < dist2_threshold)
@@ -327,7 +327,9 @@ void VO_SF::smoothRegions(unsigned int image_level)
 	const MatrixXf &xx_ref = xx_old[image_level];
 	const MatrixXf &yy_ref = yy_old[image_level];
 	const MatrixXi &labels_ref = labels[image_level];
-	Matrix<float, NUM_LABELS+1, Dynamic> &label_funct_ref = label_funct[image_level];
+    Matrix<float, NUM_LABELS+1, Dynamic> &label_funct_ref = label_funct[image_level];
+    //MatrixXf &label_funct_ref = label_funct[image_level];
+    //MatrixXf &label_funct_ref = label_funct[image_level];
 
     //Set all labelling functions to zero initially
     label_funct_ref.assign(0.f);
@@ -342,7 +344,7 @@ void VO_SF::smoothRegions(unsigned int image_level)
 			const Vector3f p(depth_ref(v,u), xx_ref(v,u), yy_ref(v,u));
 			const unsigned int pixel_ind = v+u*rows_i;
 
-			if (labels_ref(v,u) < NUM_LABELS)
+            if (labels_ref(v,u) < num_cluster_labels)
 			{
 				const unsigned int lab = labels_ref(v,u);
 				weights.fill(0.f);
@@ -350,7 +352,7 @@ void VO_SF::smoothRegions(unsigned int image_level)
 				//Compute distance to its original label
 				const float ref_dist = (kmeans.col(lab) - p).squaredNorm();
 
-				for (unsigned int l=0; l<NUM_LABELS; l++)
+                for (unsigned int l=0; l<num_cluster_labels; l++)
 					if (connectivity[lab][l])
 					{
 						const float dist = (kmeans.col(l) - p).squaredNorm();
@@ -365,7 +367,7 @@ void VO_SF::smoothRegions(unsigned int image_level)
 				label_funct_ref.col(pixel_ind) = weights*sum_weights_inv;
 			}
 			else
-				label_funct_ref(NUM_LABELS, pixel_ind) = 1.f;
+                label_funct_ref(num_cluster_labels, pixel_ind) = 1.f;
 		}
 }
 
@@ -375,8 +377,8 @@ void VO_SF::createLabelsPyramidUsingKMeans()
 
 	//Compute distance between the kmeans (to improve runtime of the next phase)
 	Matrix<float, NUM_LABELS, NUM_LABELS> kmeans_dist;
-	for (unsigned int la=0; la<NUM_LABELS; la++)
-		for (unsigned int lb=la+1; lb<NUM_LABELS; lb++)
+    for (unsigned int la=0; la<num_cluster_labels; la++)
+        for (unsigned int lb=la+1; lb<num_cluster_labels; lb++)
 			kmeans_dist(la,lb) = (kmeans.col(la) - kmeans.col(lb)).squaredNorm();
 	
 	//Generate levels
@@ -392,7 +394,7 @@ void VO_SF::createLabelsPyramidUsingKMeans()
 		const MatrixXf &xx_old_ref = xx_old[image_level];
 		const MatrixXf &yy_old_ref = yy_old[image_level];
 
-		labels_ref.assign(NUM_LABELS);
+        labels_ref.assign(num_cluster_labels);
 	
 		//Compute belonging to each label
 		for (unsigned int u=0; u<cols_i; u++)
@@ -404,7 +406,7 @@ void VO_SF::createLabelsPyramidUsingKMeans()
 					float min_dist = (kmeans.col(0) - p).squaredNorm();
 					float dist_here;
 
-					for (unsigned int l=1; l<NUM_LABELS; l++)
+                    for (unsigned int l=1; l<num_cluster_labels; l++)
 					{
 						if (kmeans_dist(label,l) > 4.f*min_dist) continue;
 

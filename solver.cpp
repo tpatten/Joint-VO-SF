@@ -32,6 +32,9 @@ using namespace Eigen;
 //A strange size for "ws..." due to the fact that some pixels are used twice for odometry and scene flow (hence the 3/2 safety factor)
 VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*res_factor)), ws_background(3*640*480/(2*res_factor*res_factor))  
 {
+    // Number of cluster labels
+    num_cluster_labels = NUM_LABELS;
+
     //Resolutions and levels
     rows = 240;
     cols = 320;
@@ -102,7 +105,7 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
             xx_warped[i].resize(rows_i,cols_i);
             yy_warped[i].resize(rows_i,cols_i);
 			labels[i].resize(rows_i, cols_i);
-			label_funct[i].resize(NUM_LABELS+1, rows_i*cols_i);
+            label_funct[i].resize(num_cluster_labels+1, rows_i*cols_i);
             label_funct[i].assign(0.f);
 		}
     }
@@ -126,6 +129,11 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
 		backg_image[c].resize(rows,cols);
         labels_image[c].resize(rows,cols);
 	}
+
+    T_clusters.resize ( num_cluster_labels );
+    connectivity.resize ( num_cluster_labels );
+    for ( size_t i = 0; i < connectivity.size(); ++i )
+      connectivity[i].resize ( num_cluster_labels );
 }
 
 void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)
@@ -723,9 +731,9 @@ void VO_SF::solveMotionDynamicClusters()
 
 	//Refs
     vector<pair<int,int> > &indices = ws_foreground.indices;
-	const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
+    const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
 
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
     {
         if (!label_dynamic[l])
 			continue;
@@ -752,12 +760,12 @@ void VO_SF::solveMotionStaticClusters()
     Vector6f twist;
 
 	//Refs
-	const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
+    const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
     vector<pair<int,int> > &indices = ws_background.indices;
     indices.clear();
 
 	//Create the indices for the elements in the background
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
     {
         if (!label_static[l])
 			continue;
@@ -773,7 +781,7 @@ void VO_SF::solveMotionStaticClusters()
 
     //Save the solution
 	computeTransformationFromTwist(twist, true);
-	for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 		if ((label_static[l])&&(!label_dynamic[l])) 
 			computeTransformationFromTwist(twist, false, l);
 }
@@ -866,8 +874,8 @@ void VO_SF::warpImages(cv::Rect region)
     intensity_warped_ref.block(y, x, h, w).assign(0.f);
 
     //Compute the inverse rigid transformation associated to the labels
-    Matrix4f inv_trans[NUM_LABELS];
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    Matrix4f inv_trans[num_cluster_labels];
+    for (unsigned int l=0; l<num_cluster_labels; l++)
 		inv_trans[l] = T_clusters[l].inverse();
 
 	//Fast warping
@@ -876,11 +884,11 @@ void VO_SF::warpImages(cv::Rect region)
         {
             const int pixel_label = i+j*rows_i;
 			const float z = depth_old_ref(i,j);
-            if ((z > 0.f)&&(labels_ref(NUM_LABELS, pixel_label) != 1.f))
+            if ((z > 0.f)&&(labels_ref(num_cluster_labels, pixel_label) != 1.f))
             {
                 //Interpolate between the transformations (not correct but faster and works)
                 Matrix4f trans = Matrix4f::Zero();
-                for (unsigned int l=0; l<=NUM_LABELS; l++)
+                for (unsigned int l=0; l<=num_cluster_labels; l++)
                     if (labels_ref(l,pixel_label) != 0.f)
                         trans += labels_ref(l,pixel_label)*inv_trans[l];
 
@@ -1041,7 +1049,7 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
     //---------------------------------------------------------------------------------
     //Initialize the overall transformations to 0
 	T_odometry.setIdentity();
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
         T_clusters[l].setIdentity();
 
     //Coarse-to-fine
@@ -1086,7 +1094,7 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 	//-------------------------------------------------------------------------------------
 	//Set the overall transformations to 0
 	T_odometry.setIdentity();
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
         T_clusters[l].setIdentity();
 
 	//Coarse-to-fine
@@ -1163,7 +1171,7 @@ void VO_SF::run_VO_SF_TP ( bool create_image_pyr )
     //---------------------------------------------------------------------------------
     //Initialize the overall transformations to 0
     T_odometry.setIdentity();
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
         T_clusters[l].setIdentity();
 
     //Coarse-to-fine
@@ -1208,7 +1216,7 @@ void VO_SF::run_VO_SF_TP ( bool create_image_pyr )
     //-------------------------------------------------------------------------------------
     //Set the overall transformations to 0
     T_odometry.setIdentity();
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l=0; l<num_cluster_labels; l++)
         T_clusters[l].setIdentity();
 
     //Coarse-to-fine
@@ -1261,8 +1269,8 @@ void VO_SF::computeSceneFlowFromRigidMotions()
 	const unsigned int repr_level = round(log2(width/cols));
 
     //Compute the inverse rigid transformation associated to the labels
-    Matrix4f inv_trans[NUM_LABELS];
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    Matrix4f inv_trans[num_cluster_labels];
+    for (unsigned int l=0; l<num_cluster_labels; l++)
         inv_trans[l] = T_clusters[l].inverse();
 
 	//Refs
@@ -1278,8 +1286,8 @@ void VO_SF::computeSceneFlowFromRigidMotions()
 
 	//Build a mask for clusters whose scene flow should not be computed
 	Matrix<bool, NUM_LABELS, 1> ignore_label; ignore_label.fill(true);
-	for (unsigned int l_here=0; l_here<NUM_LABELS; l_here++)
-		for (unsigned int l=0; l<NUM_LABELS; l++)
+    for (unsigned int l_here=0; l_here<num_cluster_labels; l_here++)
+        for (unsigned int l=0; l<num_cluster_labels; l++)
 			if (connectivity[l_here][l])
 				if (label_dynamic[l])
 				{
@@ -1300,7 +1308,7 @@ void VO_SF::computeSceneFlowFromRigidMotions()
                 trans.fill(0.f);
 				bool pixel_static = true;
 
-                for (unsigned int l=0; l<NUM_LABELS; l++)
+                for (unsigned int l=0; l<num_cluster_labels; l++)
 				{
 					if ((label_funct_ref(l,pixel_label) != 0.f))
 					{

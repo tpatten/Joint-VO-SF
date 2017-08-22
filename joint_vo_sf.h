@@ -85,7 +85,7 @@ public:
 	Eigen::Array44f f_mask;											//Convolutional kernel used to build the image pyramid
 
     //Velocities, transformations and poses
-    Eigen::Matrix4f T_clusters[NUM_LABELS];					//Rigid transformations estimated for each cluster
+    std::vector<Eigen::Matrix4f> T_clusters;                //Rigid transformations estimated for each cluster
 	Eigen::Matrix4f T_odometry;								//Rigid transformation of the camera motion (odometry)
 	Vector6f twist_odometry, twist_level_odometry;			//Twist encoding the odometry (accumulated and local for the pyramid level)	
 	mrpt::poses::CPose3D cam_pose, cam_oldpose;				//Estimated camera poses (current and prev)
@@ -97,6 +97,7 @@ public:
     unsigned int width, height;					//Resolution of the input images
 	unsigned int ctf_levels;					//Number of coarse-to-fine levels
 	unsigned int image_level, level;			//Aux variables
+    unsigned int num_cluster_labels;            //Store the number of cluster labels
 
 
     VO_SF(unsigned int res_factor);
@@ -145,7 +146,7 @@ public:
     std::vector<Eigen::Matrix<float, NUM_LABELS+1, Eigen::Dynamic> > label_funct;	//Indicator funtions for the continuous labelling
 	Eigen::Matrix<float, 3, NUM_LABELS> kmeans;										//Centers of the KMeans clusters
 	Eigen::Matrix<int, NUM_LABELS, 1> size_kmeans;									//Size of the clusters
-	bool connectivity[NUM_LABELS][NUM_LABELS];										//Connectivity between the clusters
+    std::vector<std::vector<bool> > connectivity;                                   //Connectivity between the clusters
 
 	void createLabelsPyramidUsingKMeans();				//Create the label pyramid
 	void initializeKMeans();							//Initialize KMeans by uniformly dividing the image plane

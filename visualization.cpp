@@ -482,14 +482,16 @@ void VO_SF::createImagesOfSegmentations()
     image_level = round(log2(width/cols));
 
 	//Refs
-	const Matrix<float, NUM_LABELS+1, Dynamic> label_funct_ref = label_funct[image_level];
+    const Matrix<float, NUM_LABELS+1, Dynamic> label_funct_ref = label_funct[image_level];
+    //const MatrixXf label_funct_ref = label_funct[image_level];
+    Matrix<float, NUM_LABELS+1, Dynamic> *label_funct_ptr = &label_funct[image_level];
 	const MatrixXf &depth_old_ref = depth_old[image_level];
 
     //Associate colors to labels
-    float r[NUM_LABELS], g[NUM_LABELS], b[NUM_LABELS];
-    for (unsigned int l=0; l<NUM_LABELS; l++)
+    float r[num_cluster_labels], g[num_cluster_labels], b[num_cluster_labels];
+    for (unsigned int l=0; l<num_cluster_labels; l++)
     {
-        const float indx = float(l)/float(NUM_LABELS-1);
+        const float indx = float(l)/float(num_cluster_labels-1);
         mrpt::utils::colormap(mrpt::utils::cmJET, indx, r[l], g[l], b[l]);
     }
 
@@ -505,9 +507,10 @@ void VO_SF::createImagesOfSegmentations()
         for (unsigned int v=0; v<rows; v++)
             if (depth_old_ref(v,u) != 0.f)
 			{
-                for (unsigned int l=0; l<NUM_LABELS; l++)
+                for (unsigned int l=0; l<num_cluster_labels; l++)
                 {
-                    const float lab = label_funct_ref(l, v+u*rows);
+                    //const float lab = label_funct_ref(l, v+u*rows);
+                    const float lab = (*label_funct_ptr)(l, v+u*rows);
 					if (lab != 0.f)
 					{
 						labels_image[0](v,u) += lab*r[l];
