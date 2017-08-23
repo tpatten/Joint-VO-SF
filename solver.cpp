@@ -727,9 +727,10 @@ void VO_SF::solveMotionDynamicClusters()
     const float in_threshold = 0.2f;
     Vector6f twist;
 
-	//Refs
+    //Refs
     vector<pair<int,int> > &indices = ws_foreground.indices;
     const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
+    //const Matrix<float, NUM_LABELS+1, Dynamic> *labels_ptr = &label_funct[image_level];  // works but need to call deference object when calling it
 
     for (unsigned int l=0; l<num_cluster_labels; l++)
     {
@@ -737,7 +738,7 @@ void VO_SF::solveMotionDynamicClusters()
 			continue;
 		
         //Create the indices for the elements in this cluster
-		indices.clear();
+        indices.clear();
 
         for (unsigned int u = 1; u < cols_i-1; u++)
             for (unsigned int v = 1; v < rows_i-1; v++)
@@ -755,9 +756,8 @@ void VO_SF::solveMotionDynamicClusters()
 void VO_SF::solveMotionStaticClusters()
 {
     const float in_threshold = 0.2f;
-    Vector6f twist;
 
-	//Refs
+    //Refs
     const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
     vector<pair<int,int> > &indices = ws_background.indices;
     indices.clear();
@@ -775,6 +775,7 @@ void VO_SF::solveMotionStaticClusters()
 	}
 
     //Solve
+    Vector6f twist;
     solveMotionForIndices(indices, twist, ws_background, true);
 
     //Save the solution
@@ -1283,13 +1284,13 @@ void VO_SF::computeSceneFlowFromRigidMotions()
 	MatrixXf &mz = motionfield[2];
 
 	//Build a mask for clusters whose scene flow should not be computed
-	Matrix<bool, NUM_LABELS, 1> ignore_label; ignore_label.fill(true);
+    vector<bool> ignore_label(num_cluster_labels, true); //ignore_label.fill(true);
     for (unsigned int l_here=0; l_here<num_cluster_labels; l_here++)
         for (unsigned int l=0; l<num_cluster_labels; l++)
             if (connectivity(l_here,l))
 				if (label_dynamic[l])
 				{
-					ignore_label(l_here) = false;
+                    ignore_label[l_here] = false;
 					continue;
 				}
 
@@ -1300,7 +1301,7 @@ void VO_SF::computeSceneFlowFromRigidMotions()
 			const float z = depth_old_ref(v,u);
 			const int pixel_label = v + u*rows;
 
-			if ((z != 0.f)&&(!ignore_label(labels_ref(v,u))))
+            if ((z != 0.f)&&(!ignore_label[labels_ref(v,u)]))
             {			
 				//Interpolate between the transformations
                 trans.fill(0.f);
