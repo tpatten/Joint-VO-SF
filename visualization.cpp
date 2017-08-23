@@ -482,9 +482,6 @@ void VO_SF::createImagesOfSegmentations()
     image_level = round(log2(width/cols));
 
 	//Refs
-    const Matrix<float, NUM_LABELS+1, Dynamic> label_funct_ref = label_funct[image_level];
-    //const MatrixXf label_funct_ref = label_funct[image_level];
-    Matrix<float, NUM_LABELS+1, Dynamic> *label_funct_ptr = &label_funct[image_level];
 	const MatrixXf &depth_old_ref = depth_old[image_level];
 
     //Associate colors to labels
@@ -509,8 +506,7 @@ void VO_SF::createImagesOfSegmentations()
 			{
                 for (unsigned int l=0; l<num_cluster_labels; l++)
                 {
-                    //const float lab = label_funct_ref(l, v+u*rows);
-                    const float lab = (*label_funct_ptr)(l, v+u*rows);
+                    const float lab = label_funct[image_level](l, v+u*rows);
 					if (lab != 0.f)
 					{
 						labels_image[0](v,u) += lab*r[l];
