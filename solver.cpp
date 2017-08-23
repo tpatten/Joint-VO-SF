@@ -74,7 +74,7 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
 
 
 	//Resize matrices in a "pyramid"
-    const unsigned int pyr_levels = round(log2(width/cols)) + ctf_levels;
+    pyr_levels = round(log2(width/cols)) + ctf_levels;
     intensity.resize(pyr_levels); intensity_old.resize(pyr_levels); intensity_inter.resize(pyr_levels);
     depth.resize(pyr_levels); depth_old.resize(pyr_levels); depth_inter.resize(pyr_levels);
     xx.resize(pyr_levels); xx_inter.resize(pyr_levels); xx_old.resize(pyr_levels);
@@ -139,6 +139,11 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
     label_dynamic.resize(num_cluster_labels, 1);
     b_segm.resize(num_cluster_labels);
     b_segm_warped.resize(num_cluster_labels);
+}
+
+void VO_SF::setNumClusters(const unsigned int num_clusters)
+{
+  num_cluster_labels = num_clusters;
 }
 
 void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)
@@ -736,8 +741,8 @@ void VO_SF::solveMotionDynamicClusters()
 
     //Refs
     vector<pair<int,int> > &indices = ws_foreground.indices;
-    const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
-    //const Matrix<float, NUM_LABELS+1, Dynamic> *labels_ptr = &label_funct[image_level];  // works but need to call deference object when calling it
+    //const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
+    //const MatrixXf *labels_ptr = &label_funct[image_level];  // works but need to call deference object when calling it
 
     for (unsigned int l=0; l<num_cluster_labels; l++)
     {
@@ -749,7 +754,7 @@ void VO_SF::solveMotionDynamicClusters()
 
         for (unsigned int u = 1; u < cols_i-1; u++)
             for (unsigned int v = 1; v < rows_i-1; v++)
-                if ((Null(v,u) == false)&&(labels_ref(l,v+u*rows_i) > in_threshold))
+                if ((Null(v,u) == false)&&(label_funct[image_level](l,v+u*rows_i) > in_threshold))
                     indices.push_back(make_pair(v,u));
 
 		//Solve
@@ -765,7 +770,7 @@ void VO_SF::solveMotionStaticClusters()
     const float in_threshold = 0.2f;
 
     //Refs
-    const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
+    //const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
     vector<pair<int,int> > &indices = ws_background.indices;
     indices.clear();
 
@@ -777,7 +782,7 @@ void VO_SF::solveMotionStaticClusters()
 
         for (unsigned int u = 1; u < cols_i-1; u++)
             for (unsigned int v = 1; v < rows_i-1; v++)
-                if ((Null(v,u) == false)&&(labels_ref(l,v+u*rows_i) > in_threshold))
+                if ((Null(v,u) == false)&&(label_funct[image_level](l,v+u*rows_i) > in_threshold))
                     indices.push_back(make_pair(v,u));
 	}
 
@@ -871,7 +876,7 @@ void VO_SF::warpImages(cv::Rect region)
 	const MatrixXf &depth_old_ref = depth_old[image_level];
 	const MatrixXf &xx_old_ref = xx_old[image_level];
 	const MatrixXf &yy_old_ref = yy_old[image_level];
-	const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
+    //const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
 
 	//Initialize
 	depth_warped_ref.block(y, x, h, w).assign(0.f);
@@ -890,13 +895,13 @@ void VO_SF::warpImages(cv::Rect region)
         {
             const int pixel_label = i+j*rows_i;
 			const float z = depth_old_ref(i,j);
-            if ((z > 0.f)&&(labels_ref(num_cluster_labels, pixel_label) != 1.f))
+            if ((z > 0.f)&&(label_funct[image_level](num_cluster_labels, pixel_label) != 1.f))
             {
                 //Interpolate between the transformations (not correct but faster and works)
                 Matrix4f trans = Matrix4f::Zero();
                 for (unsigned int l=0; l<=num_cluster_labels; l++)
-                    if (labels_ref(l,pixel_label) != 0.f)
-                        trans += labels_ref(l,pixel_label)*inv_trans[l];
+                    if (label_funct[image_level](l,pixel_label) != 0.f)
+                        trans += label_funct[image_level](l,pixel_label)*inv_trans[l];
 
                 //Transform point to the warped reference frame
                 const float depth_w = trans(0,0)*z + trans(0,1)*xx_old_ref(i,j) + trans(0,2)*yy_old_ref(i,j) + trans(0,3);
@@ -1283,8 +1288,8 @@ void VO_SF::computeSceneFlowFromRigidMotions()
 	const MatrixXf &depth_old_ref = depth_old[repr_level];
 	const MatrixXf &xx_old_ref = xx_old[repr_level];
 	const MatrixXf &yy_old_ref = yy_old[repr_level];
-	const Matrix<float, NUM_LABELS+1, Dynamic> &label_funct_ref = label_funct[image_level];
-	const MatrixXi &labels_ref = labels[image_level];
+    //const Matrix<float, NUM_LABELS+1, Dynamic> &label_funct_ref = label_funct[image_level];
+    const MatrixXi &labels_ref = labels[image_level];
 
 	MatrixXf &mx = motionfield[0];
 	MatrixXf &my = motionfield[1];
@@ -1316,9 +1321,9 @@ void VO_SF::computeSceneFlowFromRigidMotions()
 
                 for (unsigned int l=0; l<num_cluster_labels; l++)
 				{
-					if ((label_funct_ref(l,pixel_label) != 0.f))
+                    if ((label_funct[image_level](l,pixel_label) != 0.f))
 					{
-                        trans += label_funct_ref(l,pixel_label)*inv_trans[l];
+                        trans += label_funct[image_level](l,pixel_label)*inv_trans[l];
 
 						if (pixel_static && (label_dynamic[l]))
 							pixel_static = false;

@@ -97,9 +97,11 @@ public:
 	unsigned int ctf_levels;					//Number of coarse-to-fine levels
 	unsigned int image_level, level;			//Aux variables
     unsigned int num_cluster_labels;            //Store the number of cluster labels
+    unsigned int pyr_levels;
 
 
     VO_SF(unsigned int res_factor);
+    void setNumClusters(const unsigned int num_clusters);   // Set the number of clusters variable and resize all matrices for computation
     void createImagePyramid();					//Create image pyramids (intensity and depth)
     void warpImages();							//Fast warping (last image towards the prev one)
     void warpImagesParallel();
@@ -117,7 +119,7 @@ public:
 
     void run_VO_SF(bool create_image_pyr);		//Main method to run whole algorithm
 
-    void run_VO_SF_TP ( bool create_image_pyr );		//Main method to run whole algorithm (Tim Patten version)
+    void run_VO_SF_TP(bool create_image_pyr);	//Main method to run whole algorithm (Tim Patten version)
 
 
 
@@ -142,7 +144,8 @@ public:
     //					Geometric clustering
     //--------------------------------------------------------------   
 	std::vector<Eigen::MatrixXi> labels;											//Integer non-smooth labelling
-    std::vector<Eigen::Matrix<float, NUM_LABELS+1, Eigen::Dynamic> > label_funct;	//Indicator funtions for the continuous labelling
+    //std::vector<Eigen::Matrix<float, NUM_LABELS+1, Eigen::Dynamic> > label_funct;	//Indicator funtions for the continuous labelling
+    std::vector<Eigen::MatrixXf> label_funct;	//Indicator funtions for the continuous labelling
     Eigen::MatrixXf kmeans;										//Centers of the KMeans clusters
     Eigen::VectorXi size_kmeans;									//Size of the clusters
     Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> connectivity;               //Connectivity between the clusters
