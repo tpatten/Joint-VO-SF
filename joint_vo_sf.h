@@ -164,7 +164,8 @@ public:
 	bool use_b_temp_reg;													//Flag to turn on/off temporal propagation of the static/dynamic segmentation
 
 	void segmentStaticDynamic();											//Main method to segment the clusters into static/dynamic
-	void optimizeSegmentation(Eigen::Matrix<float, NUM_LABELS, 1> &r);		//Solver the optimization problem proposed for the segmentation
+    //void optimizeSegmentation(Eigen::Matrix<float, NUM_LABELS, 1> &r);		//Solver the optimization problem proposed for the segmentation
+    void optimizeSegmentation(Eigen::VectorXf &r);		//Solver the optimization problem proposed for the segmentation
 	void warpStaticDynamicSegmentation();									//Warp the segmentation forward
 	void computeSegTemporalRegValues();										//Compute ref values for the temporal regularization
 

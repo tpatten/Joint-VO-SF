@@ -39,7 +39,7 @@ void VO_SF::segmentStaticDynamic()
 	warpImagesAccurate();
 
 	//Aux variables and parameters
-	Matrix<float, NUM_LABELS, 1> lab_res_c, lab_res_d, weighted_res;
+    VectorXf lab_res_c(num_cluster_labels), lab_res_d(num_cluster_labels), weighted_res(num_cluster_labels);
 	lab_res_c.fill(0.f); lab_res_d.fill(0.f); 
 	const float trunc_threshold = 0.2f;
 	const float res_depth_t = 0.1f;
@@ -110,7 +110,7 @@ void VO_SF::segmentStaticDynamic()
 }
 
 
-void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
+void VO_SF::optimizeSegmentation(VectorXf &r)
 {
 	//Set thresholds according to the residuals obtained and the estimated velocity
 	vector<float> res_sorted;
@@ -131,9 +131,9 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
             if (connectivity(l,lc))
 				num_connections++;
 
-	Matrix<float, NUM_LABELS, 1> background_ref;
-	Matrix<float, Dynamic, Dynamic> A(NUM_LABELS + num_connections, NUM_LABELS);
-	Matrix<float, Dynamic, 1> B(NUM_LABELS + num_connections, 1);
+    VectorXf background_ref(num_cluster_labels);
+    MatrixXf A(num_cluster_labels + num_connections, num_cluster_labels);
+    VectorXf B(num_cluster_labels + num_connections, 1);
 	MatrixXf AtA, AtB;
 	A.fill(0.f); B.fill(0.f);
 
@@ -218,7 +218,7 @@ void VO_SF::warpStaticDynamicSegmentation()
 	const MatrixXf &yy_ref = yy[image_level];
 
 	//Warped Kmeans
-	Matrix<float, 3, NUM_LABELS> kmeans_w;
+    MatrixXf kmeans_w(3, num_cluster_labels);
     for (unsigned int l=0; l<num_cluster_labels; l++)
 	{
         const Matrix4f trans = T_clusters[l].inverse();
@@ -227,7 +227,7 @@ void VO_SF::warpStaticDynamicSegmentation()
 	}
 
 	//Compute distance between the kmeans (to improve runtime of the next phase)
-	Matrix<float, NUM_LABELS, NUM_LABELS> kmeans_dist;
+    MatrixXf kmeans_dist(num_cluster_labels,num_cluster_labels);
     for (unsigned int la=0; la<num_cluster_labels; la++)
         for (unsigned int lb=la+1; lb<num_cluster_labels; lb++)
 			kmeans_dist(la,lb) = (kmeans_w.col(la) - kmeans_w.col(lb)).squaredNorm();
