@@ -288,8 +288,8 @@ void VO_SF::computeRegionConnectivity()
     for (unsigned int i=0; i<num_cluster_labels; i++)
         for (unsigned int j=0; j<num_cluster_labels; j++)
 		{
-			if (i == j) connectivity[i][j] = true;
-			else		connectivity[i][j] = false;
+            if (i == j) connectivity(i,j) = true;
+            else		connectivity(i,j) = false;
 		}
 
     for (unsigned int u=0; u<cols-1; u++)
@@ -302,8 +302,8 @@ void VO_SF::computeRegionConnectivity()
                     const float disty = square(depth_old_ref(v,u) - depth_old_ref(v+1,u)) + square(yy_old_ref(v,u) - yy_old_ref(v+1,u));
                     if (disty < dist2_threshold)
                     {
-                        connectivity[labels_ref(v,u)][labels_ref(v+1,u)] = true;
-                        connectivity[labels_ref(v+1,u)][labels_ref(v,u)] = true;
+                        connectivity(labels_ref(v,u),labels_ref(v+1,u)) = true;
+                        connectivity(labels_ref(v+1,u),labels_ref(v,u)) = true;
                     }
                 }
 
@@ -313,8 +313,8 @@ void VO_SF::computeRegionConnectivity()
                     const float distx = square(depth_old_ref(v,u) - depth_old_ref(v,u+1)) + square(xx_old_ref(v,u) - xx_old_ref(v,u+1));
                     if (distx < dist2_threshold)
                     {
-                        connectivity[labels_ref(v,u)][labels_ref(v,u+1)] = true;
-                        connectivity[labels_ref(v,u+1)][labels_ref(v,u)] = true;
+                        connectivity(labels_ref(v,u),labels_ref(v,u+1)) = true;
+                        connectivity(labels_ref(v,u+1),labels_ref(v,u)) = true;
                     }
                 }
             }
@@ -353,7 +353,7 @@ void VO_SF::smoothRegions(unsigned int image_level)
 				const float ref_dist = (kmeans.col(lab) - p).squaredNorm();
 
                 for (unsigned int l=0; l<num_cluster_labels; l++)
-					if (connectivity[lab][l])
+                    if (connectivity(lab,l))
 					{
 						const float dist = (kmeans.col(l) - p).squaredNorm();
 						//const float ref_dist = (kmeans.col(lab) - p).squaredNorm();

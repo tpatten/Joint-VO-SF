@@ -131,9 +131,7 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
 	}
 
     T_clusters.resize ( num_cluster_labels );
-    connectivity.resize ( num_cluster_labels );
-    for ( size_t i = 0; i < connectivity.size(); ++i )
-      connectivity[i].resize ( num_cluster_labels );
+    connectivity.resize ( num_cluster_labels, num_cluster_labels );
 }
 
 void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)
@@ -1288,7 +1286,7 @@ void VO_SF::computeSceneFlowFromRigidMotions()
 	Matrix<bool, NUM_LABELS, 1> ignore_label; ignore_label.fill(true);
     for (unsigned int l_here=0; l_here<num_cluster_labels; l_here++)
         for (unsigned int l=0; l<num_cluster_labels; l++)
-			if (connectivity[l_here][l])
+            if (connectivity(l_here,l))
 				if (label_dynamic[l])
 				{
 					ignore_label(l_here) = false;

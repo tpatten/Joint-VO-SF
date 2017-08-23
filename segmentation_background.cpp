@@ -128,7 +128,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 	unsigned int num_connections = 0;
     for (unsigned int l=0; l<num_cluster_labels; l++)
         for (unsigned int lc=l+1; lc<num_cluster_labels; lc++)
-			if (connectivity[l][lc])
+            if (connectivity(l,lc))
 				num_connections++;
 
 	Matrix<float, NUM_LABELS, 1> background_ref;
@@ -172,7 +172,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 	unsigned int cont_reg = 0;
     for (unsigned int l=0; l<num_cluster_labels; l++)
         for (unsigned int lc=l+1; lc<num_cluster_labels; lc++)
-			if (connectivity[l][lc] == true)
+            if (connectivity(l,lc) == true)
 			{
 				const float weight_reg = lambda_reg;
                 A(num_cluster_labels + cont_reg, l) = weight_reg;

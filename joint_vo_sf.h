@@ -146,7 +146,7 @@ public:
     std::vector<Eigen::Matrix<float, NUM_LABELS+1, Eigen::Dynamic> > label_funct;	//Indicator funtions for the continuous labelling
 	Eigen::Matrix<float, 3, NUM_LABELS> kmeans;										//Centers of the KMeans clusters
 	Eigen::Matrix<int, NUM_LABELS, 1> size_kmeans;									//Size of the clusters
-    std::vector<std::vector<bool> > connectivity;                                   //Connectivity between the clusters
+    Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> connectivity;               //Connectivity between the clusters
 
 	void createLabelsPyramidUsingKMeans();				//Create the label pyramid
 	void initializeKMeans();							//Initialize KMeans by uniformly dividing the image plane
