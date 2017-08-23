@@ -51,6 +51,9 @@ int main(int argc, char **argv)
         save_results = true;
     }
 
+    //Set number of clusters
+    cf.setNumClusters(24);
+
 	//Load images and create both pyramids
 	cf.loadImagePairFromFiles(dir, res_factor);
 

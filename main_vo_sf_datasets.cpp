@@ -41,6 +41,7 @@ int main(int argc, char **argv)
 	const bool save_results = true;
     unsigned int res_factor = 2;
 	VO_SF cf(res_factor);
+    cf.setNumClusters(24);
 	Datasets dataset(res_factor);
 
 

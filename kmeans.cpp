@@ -46,8 +46,6 @@ void VO_SF::initializeKMeans()
 	rows_i = rows/2; cols_i = cols/2; 
 	image_level = round(log2(width/cols_i));
 	const MatrixXf &depth_ref = depth_old[image_level];
-	const MatrixXf &xx_ref = xx_old[image_level];
-	const MatrixXf &yy_ref = yy_old[image_level];
 	MatrixXi &labels_ref = labels[image_level];
     labels_ref.assign(num_cluster_labels);
 

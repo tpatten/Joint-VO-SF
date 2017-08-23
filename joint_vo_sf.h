@@ -34,9 +34,6 @@
 #include <unsupported/Eigen/MatrixFunctions>
 #include <opencv2/opencv.hpp>
 
-
-#define NUM_LABELS 24
-
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 typedef Eigen::Matrix<float, 2, 6> JacobianT;
 typedef Eigen::Matrix<float, 2, 1> ResidualT;
@@ -144,10 +141,9 @@ public:
     //					Geometric clustering
     //--------------------------------------------------------------   
 	std::vector<Eigen::MatrixXi> labels;											//Integer non-smooth labelling
-    //std::vector<Eigen::Matrix<float, NUM_LABELS+1, Eigen::Dynamic> > label_funct;	//Indicator funtions for the continuous labelling
-    std::vector<Eigen::MatrixXf> label_funct;	//Indicator funtions for the continuous labelling
-    Eigen::MatrixXf kmeans;										//Centers of the KMeans clusters
-    Eigen::VectorXi size_kmeans;									//Size of the clusters
+    std::vector<Eigen::MatrixXf> label_funct;                                       //Indicator funtions for the continuous labelling
+    Eigen::MatrixXf kmeans;                                                         //Centers of the KMeans clusters
+    Eigen::VectorXi size_kmeans;                                                    //Size of the clusters
     Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> connectivity;               //Connectivity between the clusters
 
 	void createLabelsPyramidUsingKMeans();				//Create the label pyramid
@@ -160,13 +156,13 @@ public:
 
 	//						Static-Dynamic segmentation
 	//--------------------------------------------------------------------------------
-    Eigen::Array<bool, Eigen::Dynamic, 1> label_static, label_dynamic;			//Cluster segmentation as static, dynamic or both (uncertain)
-    Eigen::VectorXf b_segm, b_segm_warped;				//Exact b values of the segmentation (original and warped)
+    Eigen::Array<bool, Eigen::Dynamic, 1> label_static, label_dynamic;		//Cluster segmentation as static, dynamic or both (uncertain)
+    Eigen::VectorXf b_segm, b_segm_warped;                                  //Exact b values of the segmentation (original and warped)
 	Eigen::MatrixXf b_segm_image_warped;									//Per-pixel static-dynamic segmentation (value of b per pixel, used for temporal propagation)
 	bool use_b_temp_reg;													//Flag to turn on/off temporal propagation of the static/dynamic segmentation
 
 	void segmentStaticDynamic();											//Main method to segment the clusters into static/dynamic
-    void optimizeSegmentation(Eigen::VectorXf &r);		//Solver the optimization problem proposed for the segmentation
+    void optimizeSegmentation(Eigen::VectorXf &r);                          //Solver the optimization problem proposed for the segmentation
 	void warpStaticDynamicSegmentation();									//Warp the segmentation forward
 	void computeSegTemporalRegValues();										//Compute ref values for the temporal regularization
 

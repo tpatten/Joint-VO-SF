@@ -39,6 +39,7 @@ int main()
 {	
     unsigned int res_factor = 1;
 	VO_SF cf(res_factor);
+    cf.setNumClusters(24);
 	RGBD_Camera camera(res_factor);
 
 	//Create the 3D Scene

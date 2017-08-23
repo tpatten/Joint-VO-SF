@@ -32,9 +32,6 @@ using namespace Eigen;
 //A strange size for "ws..." due to the fact that some pixels are used twice for odometry and scene flow (hence the 3/2 safety factor)
 VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*res_factor)), ws_background(3*640*480/(2*res_factor*res_factor))  
 {
-    // Number of cluster labels
-    num_cluster_labels = NUM_LABELS;
-
     //Resolutions and levels
     rows = 240;
     cols = 320;
@@ -55,6 +52,12 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
 	//CamPose
 	cam_pose.setFromValues(0,0,0,0,0,0);
 	cam_oldpose = cam_pose;
+
+    //Compute gaussian and "fast-symmetric" mask
+    const Vector4f v_mask(1.f, 2.f, 2.f, 1.f);
+    for (unsigned int i=0; i<4; i++)
+        for (unsigned int j=0; j<4; j++)
+            f_mask(i,j) = v_mask(i)*v_mask(j)/36.f;
 
 	//Resize matrices which are not in a "pyramid"
 	depth_wf.setSize(height,width);
@@ -86,6 +89,13 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
 	labels.resize(pyr_levels);
 	label_funct.resize(pyr_levels);
 
+    //Background and label images
+    for (unsigned int c=0; c<3; c++)
+    {
+        backg_image[c].resize(rows,cols);
+        labels_image[c].resize(rows,cols);
+    }
+
 	for (unsigned int i = 0; i<pyr_levels; i++)
     {
         const unsigned int s = pow(2.f,int(i));
@@ -105,32 +115,49 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
             xx_warped[i].resize(rows_i,cols_i);
             yy_warped[i].resize(rows_i,cols_i);
 			labels[i].resize(rows_i, cols_i);
-            label_funct[i].resize(num_cluster_labels+1, rows_i*cols_i);
-            label_funct[i].assign(0.f);
+//            label_funct[i].resize(num_cluster_labels+1, rows_i*cols_i);
+//            label_funct[i].assign(0.f);
 		}
     }
-
-    //Compute gaussian and "fast-symmetric" mask
-    const Vector4f v_mask(1.f, 2.f, 2.f, 1.f);
-    for (unsigned int i=0; i<4; i++)
-        for (unsigned int j=0; j<4; j++)
-            f_mask(i,j) = v_mask(i)*v_mask(j)/36.f;
 
 
     //                      Labels
     //=========================================================
 	b_segm_image_warped.setSize(rows,cols);
 	b_segm_image_warped.fill(0.f);
-	label_static.fill(true);
-	label_dynamic.fill(false);
+//	label_static.fill(true);
+//	label_dynamic.fill(false);
 
-    for (unsigned int c=0; c<3; c++)
-	{
-		backg_image[c].resize(rows,cols);
-        labels_image[c].resize(rows,cols);
-	}
+//    // Set the size of the containers
+//    T_clusters.resize(num_cluster_labels);
+//    kmeans.resize(3, num_cluster_labels);
+//    connectivity.resize(num_cluster_labels, num_cluster_labels);
+//    size_kmeans.resize(num_cluster_labels);
+//    label_static.resize(num_cluster_labels, 1);
+//    label_dynamic.resize(num_cluster_labels, 1);
+//    b_segm.resize(num_cluster_labels);
+//    b_segm_warped.resize(num_cluster_labels);
+}
+
+void VO_SF::setNumClusters(const unsigned int num_clusters)
+{
+    num_cluster_labels = num_clusters;
 
     // Set the size of the containers
+    for (unsigned int i = 0; i<pyr_levels; i++)
+    {
+        const unsigned int s = pow(2.f,int(i));
+        cols_i = width/s; rows_i = height/s;
+        if (cols_i <= cols)
+        {
+            label_funct[i].resize(num_cluster_labels+1, rows_i*cols_i);
+            label_funct[i].assign(0.f);
+        }
+    }
+
+    label_static.fill(true);
+    label_dynamic.fill(false);
+
     T_clusters.resize(num_cluster_labels);
     kmeans.resize(3, num_cluster_labels);
     connectivity.resize(num_cluster_labels, num_cluster_labels);
@@ -139,11 +166,6 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
     label_dynamic.resize(num_cluster_labels, 1);
     b_segm.resize(num_cluster_labels);
     b_segm_warped.resize(num_cluster_labels);
-}
-
-void VO_SF::setNumClusters(const unsigned int num_clusters)
-{
-  num_cluster_labels = num_clusters;
 }
 
 void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)

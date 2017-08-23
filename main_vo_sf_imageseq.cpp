@@ -37,6 +37,7 @@ int main(int argc, char **argv)
 {	
     const unsigned int res_factor = 2;
 	VO_SF cf(res_factor);
+    cf.setNumClusters(24);
 
 
 	//Set first image to load, decimation factor and the sequence dir
