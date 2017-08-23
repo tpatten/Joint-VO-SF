@@ -327,16 +327,14 @@ void VO_SF::smoothRegions(unsigned int image_level)
 	const MatrixXf &xx_ref = xx_old[image_level];
 	const MatrixXf &yy_ref = yy_old[image_level];
 	const MatrixXi &labels_ref = labels[image_level];
-    Matrix<float, NUM_LABELS+1, Dynamic> &label_funct_ref = label_funct[image_level];
-    //MatrixXf &label_funct_ref = label_funct[image_level];
-    //MatrixXf &label_funct_ref = label_funct[image_level];
+    //Matrix<float, NUM_LABELS+1, Dynamic> &label_funct_ref = label_funct[image_level];
 
     //Set all labelling functions to zero initially
-    label_funct_ref.assign(0.f);
+    label_funct[image_level].assign(0.f);
 
 	//Smooth
 	const float k_smooth = 100.f;
-	Matrix<float, NUM_LABELS+1, 1> weights;
+    VectorXf weights(num_cluster_labels+1);
 
 	for (unsigned int u=0; u<cols_i; u++)
 		for (unsigned int v=0; v<rows_i; v++)
@@ -364,10 +362,10 @@ void VO_SF::smoothRegions(unsigned int image_level)
 					}
 
 				const float sum_weights_inv = 1.f/weights.sumAll();
-				label_funct_ref.col(pixel_ind) = weights*sum_weights_inv;
+                label_funct[image_level].col(pixel_ind) = weights*sum_weights_inv;
 			}
 			else
-                label_funct_ref(num_cluster_labels, pixel_ind) = 1.f;
+              label_funct[image_level](num_cluster_labels, pixel_ind) = 1.f;
 		}
 }
 
@@ -376,7 +374,7 @@ void VO_SF::createLabelsPyramidUsingKMeans()
 	const float limit_depth_dist = 1.f;
 
 	//Compute distance between the kmeans (to improve runtime of the next phase)
-	Matrix<float, NUM_LABELS, NUM_LABELS> kmeans_dist;
+    MatrixXf kmeans_dist(num_cluster_labels, num_cluster_labels);
     for (unsigned int la=0; la<num_cluster_labels; la++)
         for (unsigned int lb=la+1; lb<num_cluster_labels; lb++)
 			kmeans_dist(la,lb) = (kmeans.col(la) - kmeans.col(lb)).squaredNorm();
