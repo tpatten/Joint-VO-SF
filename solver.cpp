@@ -130,8 +130,15 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
         labels_image[c].resize(rows,cols);
 	}
 
-    T_clusters.resize ( num_cluster_labels );
-    connectivity.resize ( num_cluster_labels, num_cluster_labels );
+    // Set the size of the containers
+    T_clusters.resize(num_cluster_labels);
+    kmeans.resize(3, num_cluster_labels);
+    connectivity.resize(num_cluster_labels, num_cluster_labels);
+    size_kmeans.resize(num_cluster_labels);
+    label_static.resize(num_cluster_labels, 1);
+    label_dynamic.resize(num_cluster_labels, 1);
+    b_segm.resize(num_cluster_labels);
+    b_segm_warped.resize(num_cluster_labels);
 }
 
 void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)

@@ -36,7 +36,6 @@
 
 
 #define NUM_LABELS 24
-//#define NUM_LABELS 128
 
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 typedef Eigen::Matrix<float, 2, 6> JacobianT;
@@ -144,8 +143,8 @@ public:
     //--------------------------------------------------------------   
 	std::vector<Eigen::MatrixXi> labels;											//Integer non-smooth labelling
     std::vector<Eigen::Matrix<float, NUM_LABELS+1, Eigen::Dynamic> > label_funct;	//Indicator funtions for the continuous labelling
-	Eigen::Matrix<float, 3, NUM_LABELS> kmeans;										//Centers of the KMeans clusters
-	Eigen::Matrix<int, NUM_LABELS, 1> size_kmeans;									//Size of the clusters
+    Eigen::MatrixXf kmeans;										//Centers of the KMeans clusters
+    Eigen::VectorXi size_kmeans;									//Size of the clusters
     Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> connectivity;               //Connectivity between the clusters
 
 	void createLabelsPyramidUsingKMeans();				//Create the label pyramid
@@ -158,13 +157,12 @@ public:
 
 	//						Static-Dynamic segmentation
 	//--------------------------------------------------------------------------------
-	Eigen::Matrix<bool, NUM_LABELS, 1> label_static, label_dynamic;			//Cluster segmentation as static, dynamic or both (uncertain)
-	Eigen::Matrix<float, NUM_LABELS, 1> b_segm, b_segm_warped;				//Exact b values of the segmentation (original and warped)
+    Eigen::Array<bool, Eigen::Dynamic, 1> label_static, label_dynamic;			//Cluster segmentation as static, dynamic or both (uncertain)
+    Eigen::VectorXf b_segm, b_segm_warped;				//Exact b values of the segmentation (original and warped)
 	Eigen::MatrixXf b_segm_image_warped;									//Per-pixel static-dynamic segmentation (value of b per pixel, used for temporal propagation)
 	bool use_b_temp_reg;													//Flag to turn on/off temporal propagation of the static/dynamic segmentation
 
 	void segmentStaticDynamic();											//Main method to segment the clusters into static/dynamic
-    //void optimizeSegmentation(Eigen::Matrix<float, NUM_LABELS, 1> &r);		//Solver the optimization problem proposed for the segmentation
     void optimizeSegmentation(Eigen::VectorXf &r);		//Solver the optimization problem proposed for the segmentation
 	void warpStaticDynamicSegmentation();									//Warp the segmentation forward
 	void computeSegTemporalRegValues();										//Compute ref values for the temporal regularization
